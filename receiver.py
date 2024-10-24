@@ -10,8 +10,6 @@
 
 from PyQt5 import Qt
 from gnuradio import qtgui
-from PyQt5.QtCore import QObject, pyqtSlot
-from gnuradio import analog
 from gnuradio import blocks
 from gnuradio import gr
 from gnuradio.filter import firdes
@@ -24,10 +22,11 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import uhd
 import time
+import sip
 
 
 
-class transmitter(gr.top_block, Qt.QWidget):
+class receiver(gr.top_block, Qt.QWidget):
 
     def __init__(self):
         gr.top_block.__init__(self, "Not titled yet", catch_exceptions=True)
@@ -50,7 +49,7 @@ class transmitter(gr.top_block, Qt.QWidget):
         self.top_grid_layout = Qt.QGridLayout()
         self.top_layout.addLayout(self.top_grid_layout)
 
-        self.settings = Qt.QSettings("GNU Radio", "transmitter")
+        self.settings = Qt.QSettings("GNU Radio", "receiver")
 
         try:
             geometry = self.settings.value("geometry")
@@ -62,94 +61,100 @@ class transmitter(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.uiselect = uiselect = 0
         self.samp_rate = samp_rate = 5000000
 
         ##################################################
         # Blocks
         ##################################################
 
-        # Create the options list
-        self._uiselect_options = [0, 1]
-        # Create the labels list
-        self._uiselect_labels = ['Signal + Noise', 'Noise']
-        # Create the combo box
-        self._uiselect_tool_bar = Qt.QToolBar(self)
-        self._uiselect_tool_bar.addWidget(Qt.QLabel("Select Source" + ": "))
-        self._uiselect_combo_box = Qt.QComboBox()
-        self._uiselect_tool_bar.addWidget(self._uiselect_combo_box)
-        for _label in self._uiselect_labels: self._uiselect_combo_box.addItem(_label)
-        self._uiselect_callback = lambda i: Qt.QMetaObject.invokeMethod(self._uiselect_combo_box, "setCurrentIndex", Qt.Q_ARG("int", self._uiselect_options.index(i)))
-        self._uiselect_callback(self.uiselect)
-        self._uiselect_combo_box.currentIndexChanged.connect(
-            lambda i: self.set_uiselect(self._uiselect_options[i]))
-        # Create the radio buttons
-        self.top_grid_layout.addWidget(self._uiselect_tool_bar, 0, 0, 1, 1)
-        for r in range(0, 1):
-            self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.top_grid_layout.setColumnStretch(c, 1)
-        self.uhd_usrp_sink_0 = uhd.usrp_sink(
+        self.uhd_usrp_source_0_0 = uhd.usrp_source(
             ",".join(("", '')),
             uhd.stream_args(
                 cpu_format="fc32",
                 args='',
                 channels=list(range(0,1)),
             ),
-            "",
         )
-        self.uhd_usrp_sink_0.set_samp_rate(samp_rate)
-        # No synchronization enforced.
+        self.uhd_usrp_source_0_0.set_samp_rate(samp_rate)
+        self.uhd_usrp_source_0_0.set_time_unknown_pps(uhd.time_spec(0))
 
-        self.uhd_usrp_sink_0.set_center_freq(915000000, 0)
-        self.uhd_usrp_sink_0.set_antenna("TX/RX", 0)
-        self.uhd_usrp_sink_0.set_bandwidth(1000000, 0)
-        self.uhd_usrp_sink_0.set_gain(40, 0)
-        self.blocks_selector_0 = blocks.selector(gr.sizeof_gr_complex*1,uiselect,0)
-        self.blocks_selector_0.set_enabled(True)
-        self.blocks_add_xx_0 = blocks.add_vcc(1)
-        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_TRI_WAVE, 915000000, 10, 0, 0)
-        self.analog_noise_source_x_0 = analog.noise_source_c(analog.GR_UNIFORM, 5, 0)
+        self.uhd_usrp_source_0_0.set_center_freq(915000000, 0)
+        self.uhd_usrp_source_0_0.set_antenna("TX/RX", 0)
+        self.uhd_usrp_source_0_0.set_gain(40, 0)
+        self.qtgui_freq_sink_x_1 = qtgui.freq_sink_c(
+            1024, #size
+            window.WIN_BLACKMAN_hARRIS, #wintype
+            915000000, #fc
+            500000, #bw
+            'Signal Detection', #name
+            1,
+            None # parent
+        )
+        self.qtgui_freq_sink_x_1.set_update_time(0.10)
+        self.qtgui_freq_sink_x_1.set_y_axis((-140), 10)
+        self.qtgui_freq_sink_x_1.set_y_label('Relative Gain', 'dB')
+        self.qtgui_freq_sink_x_1.set_trigger_mode(qtgui.TRIG_MODE_FREE, 0.0, 0, "")
+        self.qtgui_freq_sink_x_1.enable_autoscale(False)
+        self.qtgui_freq_sink_x_1.enable_grid(True)
+        self.qtgui_freq_sink_x_1.set_fft_average(1.0)
+        self.qtgui_freq_sink_x_1.enable_axis_labels(True)
+        self.qtgui_freq_sink_x_1.enable_control_panel(False)
+        self.qtgui_freq_sink_x_1.set_fft_window_normalized(False)
+
+
+
+        labels = ['', '', '', '', '',
+            '', '', '', '', '']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ["blue", "red", "green", "black", "cyan",
+            "magenta", "yellow", "dark red", "dark green", "dark blue"]
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_freq_sink_x_1.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_freq_sink_x_1.set_line_label(i, labels[i])
+            self.qtgui_freq_sink_x_1.set_line_width(i, widths[i])
+            self.qtgui_freq_sink_x_1.set_line_color(i, colors[i])
+            self.qtgui_freq_sink_x_1.set_line_alpha(i, alphas[i])
+
+        self._qtgui_freq_sink_x_1_win = sip.wrapinstance(self.qtgui_freq_sink_x_1.qwidget(), Qt.QWidget)
+        self.top_layout.addWidget(self._qtgui_freq_sink_x_1_win)
+        self.blocks_head_0 = blocks.head(gr.sizeof_gr_complex*1, 400000)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_gr_complex*1, 'C:\\Users\\adrian\\Documents\\GNURadio\\test_output_10.bin', False)
+        self.blocks_file_sink_0.set_unbuffered(True)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_noise_source_x_0, 0), (self.blocks_add_xx_0, 1))
-        self.connect((self.analog_noise_source_x_0, 0), (self.blocks_selector_0, 1))
-        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_add_xx_0, 0))
-        self.connect((self.blocks_add_xx_0, 0), (self.blocks_selector_0, 0))
-        self.connect((self.blocks_selector_0, 0), (self.uhd_usrp_sink_0, 0))
+        self.connect((self.blocks_head_0, 0), (self.blocks_file_sink_0, 0))
+        self.connect((self.uhd_usrp_source_0_0, 0), (self.blocks_head_0, 0))
+        self.connect((self.uhd_usrp_source_0_0, 0), (self.qtgui_freq_sink_x_1, 0))
 
 
     def closeEvent(self, event):
-        self.settings = Qt.QSettings("GNU Radio", "transmitter")
+        self.settings = Qt.QSettings("GNU Radio", "receiver")
         self.settings.setValue("geometry", self.saveGeometry())
         self.stop()
         self.wait()
 
         event.accept()
 
-    def get_uiselect(self):
-        return self.uiselect
-
-    def set_uiselect(self, uiselect):
-        self.uiselect = uiselect
-        self._uiselect_callback(self.uiselect)
-        self.blocks_selector_0.set_input_index(self.uiselect)
-
     def get_samp_rate(self):
         return self.samp_rate
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)
-        self.uhd_usrp_sink_0.set_samp_rate(self.samp_rate)
+        self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
 
 
 
 
-def main(top_block_cls=transmitter, options=None):
+def main(top_block_cls=receiver, options=None):
 
     qapp = Qt.QApplication(sys.argv)
 
