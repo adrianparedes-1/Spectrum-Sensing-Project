@@ -4,6 +4,14 @@ The project focuses on **spectrum sensing** using **clustering machine learning 
 
 More details about the project can be found below:
 
+## Technologies Used
+
+- **Python Libraries**: NumPy, scikit-learn (sklearn), ZeroMQ (zmq), Joblib  
+- **Machine Learning Model**: Support Vector Machine (SVM)  
+- **Software**: GNU Radio Companion  
+- **Scripting**: Python Scripts, Shell Scripts  
+- **Hardware**: USRP B200 SDR Kit  
+
 ## Transmitter
 The transmitter flowchart was created with GNU Radio. The flowchart includes a signal source, a noise source, and a selector. The selector GUI allows for live toggling between signal + noise, noise, and signal during live transmission. The flowchart also assumes that you are using a USRP SDR Kit, but it can be substituted with another logic block if you choose to use a different SDR Kit. Alternatively, you may eliminate the USRP block for virtual testing.
 
