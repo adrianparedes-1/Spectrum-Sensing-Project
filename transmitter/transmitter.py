@@ -10,6 +10,7 @@
 
 from PyQt5 import Qt
 from gnuradio import qtgui
+from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, pyqtSlot
 from gnuradio import analog
 from gnuradio import blocks
@@ -62,17 +63,25 @@ class transmitter(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
+        self.variable_qtgui_range_0 = variable_qtgui_range_0 = 50
         self.uiselect = uiselect = 0
-        self.samp_rate = samp_rate = 5e5
+        self.samp_rate = samp_rate = 5e6
 
         ##################################################
         # Blocks
         ##################################################
 
+        self._variable_qtgui_range_0_range = qtgui.Range(0, 100, 1, 50, 200)
+        self._variable_qtgui_range_0_win = qtgui.RangeWidget(self._variable_qtgui_range_0_range, self.set_variable_qtgui_range_0, "GUI Gain Selector", "dial", float, QtCore.Qt.Horizontal)
+        self.top_grid_layout.addWidget(self._variable_qtgui_range_0_win, 1, 0, 1, 1)
+        for r in range(1, 2):
+            self.top_grid_layout.setRowStretch(r, 1)
+        for c in range(0, 1):
+            self.top_grid_layout.setColumnStretch(c, 1)
         # Create the options list
-        self._uiselect_options = [0, 1]
+        self._uiselect_options = [0, 1, 2]
         # Create the labels list
-        self._uiselect_labels = ['Signal + Noise', 'Noise']
+        self._uiselect_labels = ['Signal + Noise', 'Noise', 'Signal']
         # Create the combo box
         self._uiselect_tool_bar = Qt.QToolBar(self)
         self._uiselect_tool_bar.addWidget(Qt.QLabel("Select Source" + ": "))
@@ -104,12 +113,12 @@ class transmitter(gr.top_block, Qt.QWidget):
         self.uhd_usrp_sink_0.set_center_freq(915000000, 0)
         self.uhd_usrp_sink_0.set_antenna("TX/RX", 0)
         self.uhd_usrp_sink_0.set_bandwidth(1000000, 0)
-        self.uhd_usrp_sink_0.set_gain(40, 0)
+        self.uhd_usrp_sink_0.set_gain(variable_qtgui_range_0, 0)
         self.blocks_selector_0 = blocks.selector(gr.sizeof_gr_complex*1,uiselect,0)
         self.blocks_selector_0.set_enabled(True)
         self.blocks_add_xx_0 = blocks.add_vcc(1)
         self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_TRI_WAVE, 915000000, 5.62, 0, 0)
-        self.analog_noise_source_x_0 = analog.noise_source_c(analog.GR_UNIFORM, 1, 0)
+        self.analog_noise_source_x_0 = analog.noise_source_c(analog.GR_GAUSSIAN, 1, 0)
 
 
         ##################################################
@@ -118,6 +127,7 @@ class transmitter(gr.top_block, Qt.QWidget):
         self.connect((self.analog_noise_source_x_0, 0), (self.blocks_add_xx_0, 1))
         self.connect((self.analog_noise_source_x_0, 0), (self.blocks_selector_0, 1))
         self.connect((self.analog_sig_source_x_0, 0), (self.blocks_add_xx_0, 0))
+        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_selector_0, 2))
         self.connect((self.blocks_add_xx_0, 0), (self.blocks_selector_0, 0))
         self.connect((self.blocks_selector_0, 0), (self.uhd_usrp_sink_0, 0))
 
@@ -129,6 +139,13 @@ class transmitter(gr.top_block, Qt.QWidget):
         self.wait()
 
         event.accept()
+
+    def get_variable_qtgui_range_0(self):
+        return self.variable_qtgui_range_0
+
+    def set_variable_qtgui_range_0(self, variable_qtgui_range_0):
+        self.variable_qtgui_range_0 = variable_qtgui_range_0
+        self.uhd_usrp_sink_0.set_gain(self.variable_qtgui_range_0, 0)
 
     def get_uiselect(self):
         return self.uiselect
